@@ -1,0 +1,262 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String     @id @default(uuid())
+  userName    String     @unique
+  email       String?    @unique
+  password    String?
+  firstName   String?    @map("first_name")
+  lastName    String?    @map("last_name")
+  fullName    String?    @map("full_name")
+  city        String?
+  dateOfBirth DateTime?  @map("date_of_birth")
+  isVerified  Boolean    @default(false) @map("is_verified")
+  phone       String     @unique
+  roles       UserRole[]
+
+  // Driver specific fields
+  licenseNumber     String? @map("license_number")
+  licenseCategory   String? @map("license_category")
+  licenseFrontImage String? @map("license_front_image")
+
+  // Buyer/Seller specific fields
+  aadhaarNumber    String? @map("aadhaar_number")
+  aadhaarCardImage String? @map("aadhaar_card_image")
+  panNumber        String? @map("pan_number")
+  panCardImage     String? @map("pan_card_image")
+
+  // Document verification fields
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  verificationNote   String?            @map("verification_note") @db.Text
+
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+  avatar            String?
+  vehiclePosts      VehiclePost[]      @relation("PostedByUser")
+  savedVehiclePosts SavedVehiclePost[]
+  createdJobs       DriverJob[]        @relation("JobCreator")
+  savedDriverJobs   SavedDriverJob[]
+  jobApplications   JobApplication[]
+
+  @@index([city])
+  @@index([verificationStatus])
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+  @@index([role])
+  @@map("user_roles")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  DRIVER
+  ADMIN
+  DEVELOPER
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VehiclePostStatus {
+  DRAFT
+  PUBLISHED
+  SOLD
+}
+
+enum VehicleCategory {
+  HATCHBACK
+  SEDAN
+  SUV
+  TRUCK
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  TEMPORARY
+  INTERN
+  FREELANCE
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  FILLED
+  PAUSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+model VehiclePost {
+  id                 String                  @id @default(uuid())
+  images             VehicleImage[]
+  vehicleName        String
+  kmsDriven          Int
+  yearOfManufacture  Int
+  fuelType           VehicleFuelType
+  vehicleCategory    VehicleCategory
+  transmission       VehicleTransmissionType
+  description        String                  @db.Text
+  price              Float
+  location           String
+  mileage            Float
+  seatingCapacity    Int
+  engineDisplacement Int
+  maxPower           Int
+  features           String[]
+  contactName        String
+  contactNumber      String
+  status             VehiclePostStatus       @default(DRAFT)
+  approvalNote       String?                 @map("approval_note") @db.Text
+  autoPublish        Boolean                 @default(false) @map("auto_publish")
+  postedBy           User                    @relation("PostedByUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId             String                  @map("user_id")
+  savedBy            SavedVehiclePost[]
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  deletedAt          DateTime?               @map("deleted_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([vehicleCategory])
+  @@index([location])
+  @@index([price])
+  @@index([fuelType])
+  @@map("vehicle_posts")
+}
+
+model VehicleImage {
+  id            String      @id @default(uuid())
+  key           String
+  vehicle       VehiclePost @relation(fields: [vehiclePostId], references: [id], onDelete: Cascade)
+  vehiclePostId String      @map("vehicle_post_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  deletedAt     DateTime?   @map("deleted_at")
+
+  @@index([vehiclePostId])
+  @@map("vehicle_images")
+}
+
+model SavedVehiclePost {
+  id            String      @id @default(uuid())
+  userId        String      @map("user_id")
+  vehiclePostId String      @map("vehicle_post_id")
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehiclePost   VehiclePost @relation(fields: [vehiclePostId], references: [id], onDelete: Cascade)
+  savedAt       DateTime    @default(now()) @map("saved_at")
+
+  @@unique([userId, vehiclePostId])
+  @@index([userId])
+  @@index([vehiclePostId])
+  @@map("saved_vehicle_posts")
+}
+
+enum VehicleFuelType {
+  PETROL
+  DIESEL
+  CNG
+  ELECTRIC
+  HYBRID
+  LPG
+}
+
+enum VehicleTransmissionType {
+  MANUAL
+  AUTOMATIC
+}
+
+model DriverJob {
+  id           String           @id @default(uuid())
+  title        String
+  description  String
+  companyName  String
+  location     String
+  jobType      JobType
+  minSalary    Int?
+  maxSalary    Int?
+  experience   Int?
+  requirements String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  createdById  String
+  createdBy    User             @relation("JobCreator", fields: [createdById], references: [id])
+  applications JobApplication[]
+  savedBy      SavedDriverJob[]
+  status       JobStatus        @default(OPEN)
+
+  @@index([createdById])
+  @@index([location])
+  @@index([jobType])
+  @@map("driver_jobs")
+}
+
+model SavedDriverJob {
+  id       String    @id @default(uuid())
+  driverId String
+  jobId    String
+  driver   User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  job      DriverJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  savedAt DateTime @default(now())
+
+  @@unique([driverId, jobId])
+  @@index([driverId])
+  @@index([jobId])
+  @@map("saved_driver_jobs")
+}
+
+model JobApplication {
+  id                String            @id @default(uuid())
+  userId            String
+  jobId             String
+  status            ApplicationStatus @default(APPLIED)
+  statusNote        String?
+  yearsOfExperience Int?              @map("years_of_experience")
+  availableFrom     DateTime?         @map("available_from")
+  motivation        String?           @db.Text
+  licenseNumber     String?           @map("license_number")
+  licenseCategory   String?           @map("license_category")
+  appliedAt         DateTime          @default(now()) @map("applied_at")
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  DriverJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
+  @@index([status])
+  @@map("job_applications")
+}

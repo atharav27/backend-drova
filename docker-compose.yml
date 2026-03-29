@@ -1,0 +1,81 @@
+services:
+    redis:
+        image: redis/redis-stack-server:latest
+        ports:
+            - '6379:6379'
+        volumes:
+            - redis_data:/data
+        networks:
+            - backend
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
+    localstack:
+        image: localstack/localstack:3.0
+        ports:
+            - '4566:4566'
+        environment:
+            - AWS_ACCESS_KEY_ID=test
+            - AWS_SECRET_ACCESS_KEY=test
+            - AWS_DEFAULT_REGION=ap-south-1
+            - DEBUG=${DEBUG:-0}
+            - SERVICES=s3
+            - PERSISTENCE=1
+            - DOCKER_HOST=unix:///var/run/docker.sock
+        volumes:
+            - 'localstack_data:/var/lib/localstack'
+            - '/var/run/docker.sock:/var/run/docker.sock'
+        networks:
+            - backend
+        healthcheck:
+            test: ['CMD-SHELL', 'awslocal s3 ls']
+            interval: 15s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
+    server:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        tty: true
+        ports:
+            - '3001:3001'
+        environment:
+            - HTTP_HOST=0.0.0.0
+            - HTTP_PORT=3001
+            - NODE_ENV=development
+            - DATABASE_URL=postgresql://neondb_owner:npg_p2Eg7YxIJMbs@ep-dark-forest-a1bjne4g-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - AWS_ACCESS_KEY_ID=test
+            - AWS_SECRET_ACCESS_KEY=test
+            - AWS_DEFAULT_REGION=ap-south-1
+            - AWS_S3_ENDPOINT=http://localstack:4566
+            - APP_NAME=drova-backend
+            - APP_DEBUG=true
+            - APP_CORS_ORIGINS=*
+        env_file:
+            - .env.docker
+        networks:
+            - backend
+        depends_on:
+            redis:
+                condition: service_healthy
+            localstack:
+                condition: service_healthy
+
+networks:
+    backend:
+        driver: bridge
+
+volumes:
+    redis_data:
+        driver: local
+    localstack_data:
+        driver: local

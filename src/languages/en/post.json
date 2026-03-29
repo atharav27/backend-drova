@@ -1,0 +1,15 @@
+{
+    "success": {
+        "postFetched": "Posts retrieved successfully",
+        "postUpdated": "Post updated successfully",
+        "postDeleted": "Post deleted successfully",
+        "postSaved": "Post saved to bookmarks successfully",
+        "postUnsaved": "Post removed from bookmarks successfully"
+    },
+    "error": {
+        "postNotFound": "Post not found in database",
+        "postAlreadySaved": "Post is already saved in your bookmarks",
+        "postNotSaved": "Post is not in your bookmarks",
+        "postNotPendingApproval": "Post is not pending approval"
+    }
+}
