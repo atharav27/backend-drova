@@ -50,7 +50,6 @@ services:
             - HTTP_HOST=0.0.0.0
             - HTTP_PORT=3001
             - NODE_ENV=development
-            - DATABASE_URL=postgresql://neondb_owner:npg_p2Eg7YxIJMbs@ep-dark-forest-a1bjne4g-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
             - REDIS_HOST=redis
             - REDIS_PORT=6379
             - AWS_ACCESS_KEY_ID=test
